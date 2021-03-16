@@ -1,6 +1,7 @@
 import mysql.connector
 
 def connect():
+    global mydb
     try:
         mydb = mysql.connector.connect(
         host="localhost",
@@ -18,9 +19,7 @@ def connect():
 
 def restartDB(loadTables=True):
     c = mydb.cursor()
-    try:
-        c.execute("DROP DATABASE piazza")
-        #Need to nest in try block in case db is already dropped
+    c.execute("DROP DATABASE piazza") # Maybe this should be in try block (since we cant drop a dropped db)
     c.execute("CREATE DATABASE piazza")
     mydb.database="piazza"
     if loadTables:
@@ -28,8 +27,19 @@ def restartDB(loadTables=True):
             #Looks scary, but we just find all queries and execute them one by one, ignoring the last split since it's empty
             c.execute(line)
 
+head="""
+        _                    
+       (_)                   
+  _ __  _  __ _ __________ _ 
+ | '_ \| |/ _` |_  /_  / _` |
+ | |_) | | (_| |/ / / / (_| |
+ | .__/|_|\__,_/___/___\__,_|
+ | |                         
+ |_|                         
+"""
 
 def main():
+    print(head)
     connect()
     restartDB()
 
