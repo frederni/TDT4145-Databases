@@ -27,16 +27,45 @@ def restartDB(loadTables=True):
             #Looks scary, but we just find all queries and execute them one by one, ignoring the last split since it's empty
             c.execute(line)
 
-head="""
-        _                    
-       (_)                   
-  _ __  _  __ _ __________ _ 
- | '_ \| |/ _` |_  /_  / _` |
- | |_) | | (_| |/ / / / (_| |
- | .__/|_|\__,_/___/___\__,_|
- | |                         
- |_|                         
-"""
+class session(object):
+    def __init__(self, loginUser=None):
+        self.loginUser = loginUser
+        #NB Need to ensure that we don't give users ID "0"
+
+    head="""                    
+           _                    
+          (_)                   
+    _ __  _  __ _ __________ _ 
+    | '_ \| |/ _` |_  /_  / _` |
+    | |_) | | (_| |/ / / / (_| |
+    | .__/|_|\__,_/___/___\__,_|
+    | |                         
+    |_|                                                 
+    """
+
+    def login():
+        print(head)
+        while not self.loginUser:
+            email = input("E-mail: ")
+            password = input("Password: ")
+        # if (username, password) in SELECT email, password from piazza_user:
+            # loggedInUser = userID elns
+            # return 0
+        # else
+            # print("Invalid username or password.")
+    def createThread():
+        pass
+
+    def search():
+        pass
+
+    def displayThread():
+        pass
+
+    def viewStats():
+        pass
+
+
 
 def main():
     print(head)
