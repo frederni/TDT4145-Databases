@@ -1,4 +1,5 @@
 import mysql.connector
+import numpy as np
 
 def connect():
     global mydb
@@ -28,11 +29,11 @@ def restartDB(loadTables=True):
             c.execute(line)
 
 class session(object):
-    def __init__(self, loginUser=None):
+    def __init__(self, cursor, course, loginUser=None):
         self.loginUser = loginUser
-        #NB Need to ensure that we don't give users ID "0"
-
-    head="""                    
+        self.c = cursor
+        self.course = course
+        self.head = """                    
            _                    
           (_)                   
     _ __  _  __ _ __________ _ 
@@ -42,19 +43,46 @@ class session(object):
     | |                         
     |_|                                                 
     """
+    #NB Need to ensure that we don't give users ID "0"
 
-    def login():
-        print(head)
+    def login(self):
+        print(self.head)
         while not self.loginUser:
             email = input("E-mail: ")
             password = input("Password: ")
-        # if (username, password) in SELECT email, password from piazza_user:
-            # loggedInUser = userID elns
-            # return 0
-        # else
-            # print("Invalid username or password.")
+            self.c.execute("SELECT Email, Passkey FROM piazza_user;")
+            legalcombos = self.c.fetchall()
+            print(legalcombos)
+            if (email, password) in legalcombos:
+                self.c.execute("SELECT UserID FROM piazza_user WHERE (Email=%s & Passkey=%s)", (email, password))
+                self.loginUser = self.c.fetchall()
+                break
+            else:
+                print("Invalid username or password")
+    
     def createThread():
-        pass
+        title = input("Title: ")
+
+        tag = ""
+        legalTags = ["question", "announcement", "homework", "homework solution", "lectures notes", "general announcement"]
+        while tag not in legalTags:
+            tag = input("Tag: ").lower()
+            print("Tags can only be question, announcement, homework, homework solution, lectures notes or general announcements.")
+        
+        self.c.execute("SELECT FolderID, FolderName FROM folder WHERE CourseID=%s",self.course)
+        courseFolders = c.fetchall()
+        courseFolders = np.array(courseFolders).reshape(len(courseFolders),2)
+        print("Select folder: (", end='')
+        for f in courseFolders[:,1]:
+            print(f, end=' ')
+        print(")")
+        folder = ""
+        while folder not in courseFolders[:,1]:
+            print("Invalid folder name, try again.")
+            folder = input("Folder: ")
+        
+        # Not finished!
+        
 
     def search():
         pass
@@ -68,11 +96,13 @@ class session(object):
 
 
 def main():
-    print(head)
-    connect()
-    restartDB()
+    #connect()
+    #restartDB()
+    #mySession = session(mydb.cursor())
+    #mySession.login()
+    a = [("someID", "navn1"), ("id2", "navn2"), ("id3", "gucci")]
+    a = np.array(a).reshape(len(a),2)
+    print(a[:,0])
 
 if __name__ == '__main__':
     main()
-
-print("hei")
