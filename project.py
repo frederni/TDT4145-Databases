@@ -29,7 +29,16 @@ def restartDB(loadTables=True):
             c.execute(line)
 
 class session(object):
+    """
+    Session-class to store all information for the current user together with member functions.
+    """
     def __init__(self, cursor, course, loginUser=None):
+        """
+        Initialization of session.
+        :param loginUser: None by default, and changes to the logged in user's UserID.
+        :param cursor: Cursor object used by the Python MySQL connector
+        :param course: The ID(?) of the course the session is connected to
+        """
         self.loginUser = loginUser
         self.c = cursor
         self.course = course
@@ -43,9 +52,20 @@ class session(object):
     | |                         
     |_|                                                 
     """
-    #NB Need to ensure that we don't give users ID "0"
+
+    def getlastInd(self, table): #Dont know if this works, maybe?
+        """
+        Helper function to retrieve the last ID from a given table, e.g. useful when assigning a some ID to a new tuple
+        """
+        self.c.execute("SELECT MAX(SHOW KEYS FROM %s WHERE Key_name = 'PRIMARY')", table)
+        return self.c.fetchall()
+
 
     def login(self):
+        """
+        Login-method. Greets the user with the Piazza "logo" and asks for username and password.
+        Continues asking until a correct combination has been given, and updates loginUser to the userID.
+        """
         print(self.head)
         while not self.loginUser:
             email = input("E-mail: ")
@@ -60,29 +80,38 @@ class session(object):
             else:
                 print("Invalid username or password")
     
-    def createThread():
+    def createThread(self):
+        """
+        Method for creating a thread. Asks for Thread title, tag, folder and content and ensures legal types.
+        """
         title = input("Title: ")
 
         tag = ""
         legalTags = ["question", "announcement", "homework", "homework solution", "lectures notes", "general announcement"]
         while tag not in legalTags:
             tag = input("Tag: ").lower()
-            print("Tags can only be question, announcement, homework, homework solution, lectures notes or general announcements.")
+            print("Tags can only be question, announcement, homework, homework solution, lectures notes or general announcement.")
         
         self.c.execute("SELECT FolderID, FolderName FROM folder WHERE CourseID=%s",self.course)
-        courseFolders = c.fetchall()
+        courseFolders = self.c.fetchall()
         courseFolders = np.array(courseFolders).reshape(len(courseFolders),2)
         print("Select folder: (", end='')
-        for f in courseFolders[:,1]:
+        for f in courseFolders[:,1]: # This loop simply prints all folder names in current course
             print(f, end=' ')
         print(")")
+        
         folder = ""
         while folder not in courseFolders[:,1]:
             print("Invalid folder name, try again.")
             folder = input("Folder: ")
+        folderID = np.where(courseFolders==folder)[0][0]
+        question = input("Enter post message: ")
         
-        # Not finished!
-        
+        # Now that we have all data we need, we need to insert new tuples
+        Threadsql = "INSERT INTO thread VALUES ({}, {}, {}, {})"
+        self.c.execute(Threadsql.format(self.getlastInd("thread")+1, title, tag, folderID))
+        #self.c.execute("INSERT INTO POST VALUES ({}, {}, {},")
+        mydb.commit()
 
     def search():
         pass
@@ -100,6 +129,10 @@ def main():
     #restartDB()
     #mySession = session(mydb.cursor())
     #mySession.login()
+
+
+
+    #Teste-ting
     a = [("someID", "navn1"), ("id2", "navn2"), ("id3", "gucci")]
     a = np.array(a).reshape(len(a),2)
     print(a[:,0])
