@@ -42,7 +42,7 @@ create table Folder(
 	);
     
 create table Thread(
-	TID integer,
+	TID integer NOT NULL AUTO_INCREMENT,
     Title varchar(40),
     ThreadTag varchar(20),
     FolderID integer not null,
@@ -82,3 +82,7 @@ create table InteractWith(
         on delete cascade
         );
 
+INSERT INTO piazza_user VALUES (1, "em", "pwhei", "kul gutt", "student");
+INSERT INTO course VALUES (123, "DBMOD", "V21", 1);
+INSERT INTO folder VALUES (101, "exam", 123, NULL);
+INSERT INTO folder VALUES (102, "ex1", 123, NULL);
