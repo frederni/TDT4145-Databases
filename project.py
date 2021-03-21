@@ -28,14 +28,14 @@ class Database(object):
         self.c.execute("CREATE DATABASE {}".format(self.database))
         self.connection.database=self.database
         for line in open("piazza_setup.sql", 'r').read().split(';\n'):
-            #Looks scary, but we just find all queries and execute them one by one, ignoring the last split since it's empty
+            #Looks scary, but we just find all queries and execute them one by one
             self.c.execute(line)
 
 class Session(object):
     """
     Session-class to store all information for the current user together with member functions.
     """
-    def __init__(self, db, autofill=False loginUser=None):
+    def __init__(self, db, autofill=False, loginUser=None):
         """
         Initialization of session.
         :param loginUser: None by default, and changes to the logged in user's UserID.
@@ -44,7 +44,8 @@ class Session(object):
         :param course: The ID(?) of the course the session is connected to
         """
         self.loginUser = loginUser
-        self.c = db.connection.cursor()
+        self.c = db.connection.cursor(prepared=True)
+        self.db = db
         self.course = None
         self.autofill = autofill
         self.head = """                    
@@ -57,18 +58,16 @@ class Session(object):
     | |                         
     |_|                                                 
     """
-        self.usecaseMenu() # TODO implement this
+        self.usecaseMenu()
 
     def usecaseMenu(self):
         answer = ""
         while answer != "q":
-            print("", end="", flush=True)
             print("Usecase menu - enter q to quit.")
             print("1 \t Login", "2 \t Create a thread", "3 \t Reply to thread", "4 \t Search", "5 \t View stats", sep='\n')
             answer = input("Select usecase: ").lower()
             if answer == "1":
                 self.login()
-                print("self.loginUser", self.loginUser)
             elif answer == "2":
                 self.createThread()
             elif answer == "3":
@@ -77,7 +76,7 @@ class Session(object):
                 self.search()
             elif answer == "5":
                 self.viewStats()
-
+    
 
     def login(self):
         """
@@ -86,11 +85,12 @@ class Session(object):
         """
         print(self.head)
         while not self.loginUser:
-            if autofill:
+            if self.autofill:
                 email, password = "ola@ntnu.no", "passord123"
+                print("E-mail:", email, "\nPassword:", password)
             else:
                 email = input("E-mail: ")
-                password = input("Password: ")
+                password = self.ensureSafeString(input("Password: "))
             self.c.execute("SELECT Email, Passkey FROM piazza_user")
             legalcombos = self.c.fetchall()
             if (email, password) in legalcombos:
@@ -99,14 +99,16 @@ class Session(object):
                 break
             else:
                 print("Invalid username or password")
-        if autofill: courseName = "Databaser"
+        if self.autofill:
+            courseName = "Databaser"
+            print("Welcome! Select course:", courseName)
         else: courseName = input("Welcome! Select course: ")
-        self.c.execute("SELECT CourseID FROM course WHERE CourseName='{}'".format(courseName))
-        self.course = self.c.fetchall()[0][0]
+        self.c.execute("SELECT CourseID FROM course WHERE CourseName=%s", (courseName, ))
+        self.course = int(self.c.fetchall()[0][0])
 
     def getlastInd(self):
         self.c.execute("SELECT LAST_INSERT_ID()")
-        return self.c.fetchall()[0][0]
+        return int(self.c.fetchall()[0][0])
 
     def createThread(self):
         """
@@ -117,7 +119,7 @@ class Session(object):
             self.login()
 
 
-        if autofill:
+        if self.autofill:
             title = "Please help me!"
             tag = "question"
         else:
@@ -129,18 +131,20 @@ class Session(object):
                 if tag not in legalTags:
                     print("Tags can only be question, announcement, homework, homework solution, lectures notes or general announcement.")
         
-        self.c.execute("SELECT FolderID, FolderName FROM folder WHERE CourseID='{}'".format(self.course))
+        self.c.execute("SELECT FolderID, FolderName FROM folder WHERE CourseID=%s", (self.course,))
         courseFolders = self.c.fetchall()
         courseFolders = np.array(courseFolders).reshape(len(courseFolders),2)
         print("Select folder: (", end='')
         for f in courseFolders[:,1]: # This loop simply prints all folder names in current course
             print(f, end=', ')
         print(")")
-        if autofill:
+        if self.autofill:
             folder = "exam"
             print("Folder:", folder)
             question = "I don't quite understand task 4c. Does anyone know how to solve it?"
             print("Enter post message:", question)
+            isAnon = False
+            print("Anonymous? (Y/N): n")
         else:
             folder = ""
             while folder not in courseFolders[:,1]:
@@ -152,33 +156,33 @@ class Session(object):
             # TODO only allow anon posts if global settings are ok 
 
 
-        folderID = np.where(courseFolders==folder)[0][0] # TODO fix this
+        folderID = courseFolders[np.where(courseFolders==folder)[0][0], 0] # TODO fix this
         
         # Now that we have all data we need, we need to insert new tuples
         print(folderID)
-        self.c.execute("INSERT INTO thread (Title, ThreadTag, FolderID) VALUES ('{}', '{}', {})".format(
-            title,
+        self.c.execute("INSERT INTO thread (Title, ThreadTag, FolderID) VALUES (%s, %s, %s)",
+            (title,
             tag,
-            folderID
-        ))
+            folderID)
+        )
 
-        self.c.execute("INSERT INTO post VALUES ({}, {}, {}, {}, {})".format(
-            1, # First post in thread always
+        self.c.execute("INSERT INTO post VALUES (%s, %s, %s, %s, %s)",
+            (1, # First post in thread always
             self.getlastInd(), # TID
             isAnon,
             "op",
-            question
-        ))
+            question)
+        )
 
-        self.c.execute("INSER INTO interact_with VALUES ({}, {}, {}, {}, {}".format(
-            self.getlastInd(), # TID
+        self.c.execute("INSERT INTO InteractWith VALUES (%s, %s, %s, %s, %s)",
+            (self.getlastInd(), # TID
             1, #PostNo
             self.loginUser,
             time.time(),
-            "create"
-        ))
+            "create")
+        )
 
-        mydb.commit() # Required to make actual changes to database
+        self.db.connection.commit() # Required to make actual changes to database
 
     def search():
         pass
@@ -201,7 +205,7 @@ class Session(object):
 
 def main():
     UserDB = Database(host="localhost", usr="root", pw="indmat4ever", db="piazza")
-    UserSession = Session(UserDB)
+    UserSession = Session(UserDB, autofill=True)
 
 
 

@@ -68,7 +68,7 @@ create table InteractWith(
 	TID integer,
     PostNo integer,
     UserID integer,
-    Time_stamp varchar(10),
+    Time_stamp float,
     InteractionType varchar(10),
     constraint InteractWith_pk primary key(TID,PostNo,UserID),
     constraint InteractWith_fk1 foreign key(TID) references Thread(TID)
@@ -82,7 +82,7 @@ create table InteractWith(
         on delete cascade
         );
 
-INSERT INTO piazza_user VALUES (1, "em", "pwhei", "kul gutt", "student");
-INSERT INTO course VALUES (123, "DBMOD", "V21", 1);
+INSERT INTO piazza_user VALUES (1, "ola@ntnu.no", "passord123", "Ola Nordmann", "student");
+INSERT INTO course VALUES (123, "Databaser", "V21", 1);
 INSERT INTO folder VALUES (101, "exam", 123, NULL);
 INSERT INTO folder VALUES (102, "ex1", 123, NULL);
