@@ -198,7 +198,14 @@ class Session(object):
         # action = input("PostNo to like Post, 'r' to reply, 'n' to view next thread)
         pass
 
-    def viewStats():
+    def viewStats(self):
+        if not self.loginUser:
+            print("You need to be logged in to view statistics.")
+            self.login()
+        
+        #need to find out wether the logged in user is an instructor or not
+        
+
         pass
 
 
