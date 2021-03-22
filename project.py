@@ -40,7 +40,7 @@ class Session(object):
         Initialization of session.
         :param loginUser: None by default, and changes to the logged in user's UserID.
         :param cursor: Database object
-        :param autofill: Determines wheter or not we should ask for user input or auto-complete
+        :param autofill: Determines wether or not we should ask for user input or auto-complete
         :param course: The ID(?) of the course the session is connected to
         """
         self.loginUser = loginUser
@@ -90,7 +90,7 @@ class Session(object):
                 print("E-mail:", email, "\nPassword:", password)
             else:
                 email = input("E-mail: ")
-                password = self.ensureSafeString(input("Password: "))
+                password = input("Password: ")
             self.c.execute("SELECT Email, Passkey FROM piazza_user")
             legalcombos = self.c.fetchall()
             if (email, password) in legalcombos:
@@ -205,7 +205,7 @@ class Session(object):
 
 def main():
     UserDB = Database(host="localhost", usr="root", pw="indmat4ever", db="piazza")
-    UserSession = Session(UserDB, autofill=True)
+    UserSession = Session(UserDB, autofill=False)
 
 
 
