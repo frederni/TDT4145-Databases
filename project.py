@@ -35,15 +35,17 @@ class Session(object):
     """
     Session-class to store all information for the current user together with member functions.
     """
-    def __init__(self, db, autofill=False, loginUser=None):
+    def __init__(self, db, autofill=False, loginUser=None, loginUserType=None):
         """
         Initialization of session.
         :param loginUser: None by default, and changes to the logged in user's UserID.
+        :param loginUserType: None by default, and changes to the logged in user's user type (student or instructor).
         :param cursor: Database object
         :param autofill: Determines wether or not we should ask for user input or auto-complete
         :param course: The ID(?) of the course the session is connected to
         """
         self.loginUser = loginUser
+        self.loginUserType=loginUserType
         self.c = db.connection.cursor(prepared=True)
         self.db = db
         self.course = None
@@ -184,7 +186,8 @@ class Session(object):
 
         self.db.connection.commit() # Required to make actual changes to database
 
-    def search():
+    def search(): 
+        
         pass
 
     def displayThread():
@@ -198,12 +201,31 @@ class Session(object):
         # action = input("PostNo to like Post, 'r' to reply, 'n' to view next thread)
         pass
 
-    def viewStats(self):
-        if not self.loginUser:
+    def viewStats(self): #A suggestion, most likely needs editing
+        while self.loginUserType != "Instructor": #Need to find out wether the logged in user is an instructor or not
+            
             print("You need to be logged in to view statistics.")
             self.login()
+            self.c.execute("SELECT type FROM Piazza_user WHERE userID=%s",(self.loginUser, ))
+            self.loginUserType = self.c.fetchall()[0][0] 
+            if self.loginUserType != "Instructor":
+                print("Only instructors can view statistics.")
+            else: break 
         
-        #need to find out wether the logged in user is an instructor or not
+        #Not sure about the following SQL
+        self.c.execute("SELECT DisplayName,COUNT(PostNo) FROM Piazza_user LEFT OUTER JOIN InteractWith ON Piazza_user.userID=InteractWith.userID WHERE InteractionType='create' GROUP BY UserID")
+        self.c.fetchall()
+        self.c.execute("SELECT DisplayName,COUNT(PostNo) FROM Piazza_user LEFT OUTER JOIN InteractWith ON Piazza_user.userID=InteractWith.userID WHERE InteractionType='view' GROUP BY UserID")
+        self.c.fetchall()
+
+
+                
+
+            
+
+
+
+        
         
 
         pass
