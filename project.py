@@ -124,6 +124,14 @@ class Session(object):
 
     def getFolderFromID(self, FID):
         raise NotImplementedError
+    
+    def like(self, TID, postNo):
+        raise NotImplementedError
+
+    def reply(self, TID, postNo):
+        raise NotImplementedError
+    
+
 
     def createThread(self):
         """
@@ -217,7 +225,7 @@ class Session(object):
         
         
 
-    def displayThread(results):
+    def displayThread(self, results):
         """
         We display all posts in a thread with search match
         """
@@ -259,7 +267,7 @@ class Session(object):
                 self.like(TID=TID, postNo=int(action[0]))
             elif action[1] == 'R':
                 self.reply(TID=TID, postNo=int(action[0]))
-            
+            # Not finished!
 
 
     def viewStats(self):
