@@ -92,6 +92,7 @@ insert into Course values (4267, "Lineare statistiske modeller","2021V",0);
 insert into CourseMember values (4,4180);
 insert into CourseMember values (5,4180);
 insert into CourseMember values (1,4145);
+insert into CourseMember values (1,4180);
 insert into CourseMember values (3,4145);
 insert into CourseMember values (2,4145);
 insert into Folder values (12,"Exercise1",4145,NULL);
@@ -118,5 +119,3 @@ insert into interactwith values (last_insert_id()-2,214,3, 1616578173.643487, "c
 insert into interactwith values (last_insert_id()-3,211,1,1616578501.3076324,"create");
 insert into interactwith values (last_insert_id()-3,212,3, 1616578536.6857567, "create");
 insert into interactwith values (last_insert_id()-3,213,2, 1616578559.7238562, "create");
-insert into interactwith values (last_insert_id(),215,5,1616578872.4844575,"like");
-insert into interactwith values (last_insert_id()-3,212,1,1616579092.8645926,"like");
