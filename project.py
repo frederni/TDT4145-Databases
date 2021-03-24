@@ -28,14 +28,16 @@ class Database(object):
         self.c.execute("CREATE DATABASE {}".format(self.database))
         self.connection.database=self.database
         for line in open("piazza_setup.sql", 'r').read().split(';\n'):
+            print(line, end='\n-')
             #Looks scary, but we just find all queries and execute them one by one
             self.c.execute(line)
+        self.connection.commit()
 
 class Session(object):
     """
     Session-class to store all information for the current user together with member functions.
     """
-    def __init__(self, db, autofill=False, loginUser=None, loginUserType=None):
+    def __init__(self, db, autofill=False, loginUser=None):
         """
         Initialization of session.
         :param loginUser: None by default, and changes to the logged in user's UserID.
@@ -45,7 +47,6 @@ class Session(object):
         :param course: The ID(?) of the course the session is connected to
         """
         self.loginUser = loginUser
-        self.loginUserType=loginUserType
         self.c = db.connection.cursor(prepared=True)
         self.db = db
         self.course = None
@@ -88,7 +89,7 @@ class Session(object):
         print(self.head)
         while not self.loginUser:
             if self.autofill:
-                email, password = "ola@ntnu.no", "passord123"
+                email, password = "kari@ntnu.no", "kari123"
                 print("E-mail:", email, "\nPassword:", password)
             else:
                 email = input("E-mail: ")
@@ -103,7 +104,7 @@ class Session(object):
                 print("Invalid username or password")
         if self.autofill:
             courseName = "Databaser"
-            print("Welcome! Select course:", courseName)
+            print("Welcome! Select course:", courseName) # TODO auto select if user only has 1 course or list legal choices
         else: courseName = input("Welcome! Select course: ")
         self.c.execute("SELECT CourseID FROM course WHERE CourseName=%s", (courseName, ))
         self.course = int(self.c.fetchall()[0][0])
@@ -114,7 +115,10 @@ class Session(object):
 
     def getUserInfo(self, UID, getName=False, getInstructor=False):
         self.c.execute("SELECT DisplayName, Usertype FROM piazza_user WHERE UserID=%s", (UID, ))
-        tup = list(self.c.fetchall()[0]) # Cast to list so we may modify last item
+        tup = self.c.fetchall()
+        if len(tup) == 0:
+            return None
+        tup = list(tup[0]) # Cast to list so we may modify last item
         tup[1] = tup[1] == 'instructor'
         if getName and getInstructor:
             return tup
@@ -125,13 +129,40 @@ class Session(object):
         return None
 
     def getFolderFromID(self, FID):
-        raise NotImplementedError
+        self.c.execute("SELECT FolderName FROM folder WHERE FolderID=%s", (FID, ))
+        return self.c.fetchall()[0][0]
+
+    def askUserInput(self):
+        if self.autofill:
+            text = "Generic question/answer by autofill"
+            isAnon = False            
+        else:
+            question = input("Enter post message: ")
+            self.c.execute("SELECT AllowsAnonPosts from Course where CourseID = %s", (self.course, ))
+            if int(self.c.fetchall()[0][0]): # If global course settings allow anon posts
+                isAnon = int(input("Anonymous? (Y/N) ").lower() == "y") # Boolean casted as int
+        return text, isAnon
+
     
     def like(self, TID, postNo):
+        #Not a usecase and unfortunately not enough time to implement
         raise NotImplementedError
 
     def reply(self, TID, postNo):
-        raise NotImplementedError
+        print("Replying to post", postNo)
+        text, isAnon = askUserInput()
+        # Need to check if the post we're replying to is followup or not
+        # We basically inherit the same post tag as the post we're replying to
+        self.c.execute("SELECT PostTag FROM post WHERE (PostNo, TID)=(%s,%s)", (postNo, TID))
+        postTag = self.c.fetchall()[0][0]
+        self.c.execute("INSERT INTO post VALUES (%s, %s, %s, %s, %s)", (
+            postNo,
+            TID,
+            isAnon,
+            PostTag,
+            text)
+        )
+        # Not done
     
 
 
@@ -167,29 +198,19 @@ class Session(object):
         for f in courseFolders[:,1]: # This loop simply prints all folder names in current course
             print(f, end=', ')
         print(")")
+        text, isAnon = askUserInput()
         if self.autofill:
             folder = "exam"
             print("Folder:", folder)
-            question = "I don't quite understand task 4c. Does anyone know how to solve it?"
-            print("Enter post message:", question)
-            isAnon = False
-            print("Anonymous? (Y/N): n")
         else:
             folder = ""
             while folder not in courseFolders[:,1]:
                 folder = input("Folder: ")
                 if folder not in courseFolders[:,1]:
                     print("Invalid folder name, try again.")
-            question = input("Enter post message: ")
-            self.c.execute("SELECT AllowsAnonPosts from Course where CourseID = %s", (self.course, ))
-            if int(c.fetchall()[0][0]): # If global course settings allow anon posts
-                isAnon = int(input("Anonymous? (Y/N) ").lower() == "y") # Boolean casted as int
-
-
         folderID = courseFolders[np.where(courseFolders==folder)[0][0], 0]
         
         # Now that we have all data we need, we need to insert new tuples
-        print(folderID)
         self.c.execute("INSERT INTO thread (Title, ThreadTag, FolderID) VALUES (%s, %s, %s)",
             (title,
             tag,
@@ -204,7 +225,7 @@ class Session(object):
             question)
         )
 
-        self.c.execute("INSERT INTO InteractWith VALUES (%s, %s, %s, %s, %s)",
+        self.c.execute("INSERT INTO InteractWith VALUES (%s, %s, %s, %s, %s)", # Creation of post
             (self.getlastInd(), # TID
             1, #PostNo
             self.loginUser,
@@ -212,16 +233,17 @@ class Session(object):
             "create")
         )
 
+
         self.db.connection.commit() # Required to make actual changes to database
 
-    def search():
+    def search(self):
         keyword = input("Search for: ")
         padded = '%' + keyword + '%'
-        self.c.execute("SELECT * FROM post WHERE Textfield LIKE %s", (keyword, ))
-        results = c.fetchall
+        self.c.execute("SELECT * FROM post WHERE Textfield LIKE %s", (padded, ))
+        results = self.c.fetchall()
         if len(results) !=0:
             print("Found", len(results), "matching posts")
-            displayThread(results)
+            self.displayThread(results)
         else:
             print("No results")
         
@@ -231,8 +253,8 @@ class Session(object):
         """
         We display all posts in a thread with search match
         """
-        for res in results: # results = ((val_11, val_12), (val_21, val-22), ...)
-            uniqueThreadIDs = list(set([res[i][1] for i in range(len(results))]))
+        for res in results:
+            uniqueThreadIDs = list(set([results[i][1] for i in range(len(results))]))
         for TID in uniqueThreadIDs:
             self.c.execute("SELECT * FROM thread NATURAL JOIN post NATURAL JOIN interactwith WHERE TID=%s", (TID, ))
             #[TID, PostNo, Title, ThreadTag, FolderID, IsAnonymous, PostTag, Textfield, UserID, Time_stamp, InteractionType]
@@ -240,13 +262,15 @@ class Session(object):
             postTab = self.c.fetchall() # All posts belonging to thread
             # We print the first post uniquely
             title, tTag, timestamp, folder = postTab[0][2], postTab[0][3], time.ctime(postTab[0][9]), postTab[0][4]
-            print(ttag[0].upper() + ttag[1:], " : ", title, " (In folder ", self.getFolderFromID(folder),")", sep='') #TODO implement that fnc
+            print(tTag[0].upper() + tTag[1:], " : ", title, " (In folder ", self.getFolderFromID(folder),")", sep='')
             
             #Determine status (color) of thread
             studentReply, instructorReply = False, False # Default bool flags to false that is used to color thread
             for post in postTab:
-                if post[10] == 'answer' and self.getUserInfo(post[8], getInstructor=True): instructorReply = True
-                elif post[10] == 'answer': studentReply = True
+                if post[6] == 'answer' and self.getUserInfo(post[8], getInstructor=True):
+                    instructorReply = True
+                elif post[6] == 'answer':
+                    studentReply = True
             statusStr = "Status: "
             if studentReply: statusStr += "(GREEN)"
             if instructorReply: statusStr += "(ORANGE)"
@@ -255,57 +279,59 @@ class Session(object):
 
             # Print all posts
             for post in postTab: 
-                postnumber, isAnon, pTag, text, UID, timestamp, interType = post[1], post[5:]
+                postnumber, isAnon, pTag, text, UID, timestamp, interType = post[1], post[5], post[6], post[7], post[8], post[9], post[10]
                 timestamp = time.ctime(timestamp) # Convert to easily readable time
                 postedBy = self.getUserInfo(UID, getName=True)
-                print("#" + postnumber + "[" + pTag[0].upper() + pTag[1:] + "]", end=' ')
+                print("#" + str(postnumber) + "[" + pTag[0].upper() + pTag[1:] + "]", end=' ')
                 print("Posted by:", "Anonymous" if isAnon else postedBy, end=' ')
                 print(timestamp)
                 print(text)
                 print(15*'-')
-                # TODO consider implementing something to show amount of likes
             action = input("enter post number followed by 'R' or 'L' to reply or like a post, e.g. '1R' or '2L'")
-            if action[1] == 'L':
-                self.like(TID=TID, postNo=int(action[0]))
-            elif action[1] == 'R':
-                self.reply(TID=TID, postNo=int(action[0]))
-            # Not finished!
+            if action[-1] == 'L':
+                self.like(TID=TID, postNo=int(action[:-1]))
+            elif action[-1] == 'R':
+                self.reply(TID=TID, postNo=int(action[:-1]))
+            else:
+                # Log that user has read all posts
+                for post in postTab:
+                    self.c.execute("INSERT INTO interactwith values (%s, %s, %s, %s, %s)",
+                    (post[0], #TID
+                    post[1], #PostNo
+                    self.loginUser,
+                    time.time(),
+                    'view')
+                    )
+                self.db.connection.commit()
 
 
     def viewStats(self): #A suggestion, most likely needs editing
-        while self.loginUserType != "Instructor": #Need to find out wether the logged in user is an instructor or not
+        while not self.getUserInfo(self.loginUser, getInstructor=True): #Need to find out wether the logged in user is an instructor or not
             
             print("You need to be logged in to view statistics.")
             self.login()
-            self.c.execute("SELECT type FROM Piazza_user WHERE userID=%s",(self.loginUser, ))
-            self.loginUserType = self.c.fetchall()[0][0] 
-            if self.loginUserType != "Instructor":
+            if not self.getUserInfo(self.loginUser, getInstructor=True):
                 print("Only instructors can view statistics.")
             else: break 
         
-        #Not sure about the following SQL
-        self.c.execute("SELECT DisplayName,COUNT(PostNo) FROM Piazza_user LEFT OUTER JOIN InteractWith ON Piazza_user.userID=InteractWith.userID WHERE InteractionType='create' GROUP BY UserID")
-        self.c.fetchall()
-        self.c.execute("SELECT DisplayName,COUNT(PostNo) FROM Piazza_user LEFT OUTER JOIN InteractWith ON Piazza_user.userID=InteractWith.userID WHERE InteractionType='view' GROUP BY UserID")
-        self.c.fetchall()
-
-
-                
-
-            
-
-
-
         
-        
-
-        pass
+        self.c.execute("SELECT DisplayName,COUNT(PostNo) AS Amount FROM Piazza_user LEFT OUTER JOIN InteractWith ON Piazza_user.userID=InteractWith.userID WHERE InteractionType='create' GROUP BY piazza_user.UserID ORDER BY Amount DESC")
+        createResult = self.c.fetchall()
+        self.c.execute("SELECT DisplayName,COUNT(PostNo) AS Amount FROM Piazza_user LEFT OUTER JOIN InteractWith ON Piazza_user.userID=InteractWith.userID GROUP BY piazza_user.UserID ORDER BY Amount DESC")
+        viewResult = self.c.fetchall()
+        print(viewResult)
+        print(createResult)
+        for ind, res in enumerate(viewResult):
+            try:
+                print("User:", res[0], "\tViewed:", res[1], "\tCreated:", createResult[ind][1])
+            except IndexError:
+                print("User:", res[0], "\tViewed:", res[1], "\tCreated:", 0)
 
 
 
 def main():
     UserDB = Database(host="localhost", usr="root", pw="indmat4ever", db="piazza")
-    UserSession = Session(UserDB, autofill=False)
+    UserSession = Session(UserDB, autofill=True)
 
 
 

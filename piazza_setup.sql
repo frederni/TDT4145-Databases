@@ -81,8 +81,42 @@ create table InteractWith(
 		on update cascade
         on delete cascade
         );
+insert into Piazza_user values (1,"marit@ntnu.no","marit456","MaritJohnsen","Student");
+insert into Piazza_user values (2, "per@ntnu.no","per123","PerHansen", "Student");
+insert into Piazza_user values (3, "kari@ntnu.no", "kari123","KariNilsen", "instructor");
+insert into Piazza_user values (4, "petter@ntnu.no","petter456","PetterJakobsen","instructor");
+insert into Piazza_user values (5, "anna@ntnu.no","anna789","AnnaPedersen","student");
+insert into Course values (4145, "Databaser","2021V",1);
+insert into Course values (4180, "Optimering", "2021V",1);
+insert into Course values (4267, "Lineare statistiske modeller","2021V",0);
+insert into CourseMember values (4,4180);
+insert into CourseMember values (5,4180);
+insert into CourseMember values (1,4145);
+insert into CourseMember values (3,4145);
+insert into CourseMember values (2,4145);
+insert into Folder values (12,"Exercise1",4145,NULL);
+insert into Folder values (21,"Exam",4180,NULL);
+insert into Folder values (22,"Exercise1",4180,NULL);
 
-INSERT INTO piazza_user VALUES (1, "ola@ntnu.no", "passord123", "Ola Nordmann", "student");
-INSERT INTO course VALUES (123, "Databaser", "V21", 1);
-INSERT INTO folder VALUES (101, "exam", 123, NULL);
-INSERT INTO folder VALUES (102, "ex1", 123, NULL);
+insert into Thread (Title,ThreadTag,FolderID) values ("Problem 1 in exam 2020","question",21);
+insert into Post values (211,last_insert_id(),1,"op","Can anyone help with this problem?");
+insert into Post values (212,last_insert_id(),0,"answer", "Yes, you have to do this...");
+insert into Post values (213,last_insert_id(),0,"followup", "Another approach is...");
+
+insert into Thread (Title,ThreadTag,FolderID) values ("Solution to exercise1","homework solution",12);
+insert into Post values (214,last_insert_id(),0,"op", "LF...");
+
+insert into Thread (Title,ThreadTag,FolderID) values ("help with problem 3 in exam 2020","question",21);
+insert into Post values (216,last_insert_id(),0,"op", "How do you solve this...");
+
+insert into Thread (Title,ThreadTag,FolderID) values ("deadline for exercise1","announcement",22);
+insert into Post values (215,last_insert_id(),0,"op", "The deadliinteractwithpostne is...");
+
+insert into interactwith values (last_insert_id(),215,4,1616577126.596736,"create");
+insert into interactwith values (last_insert_id()-1, 216,1,1616577842.2352426,"create");
+insert into interactwith values (last_insert_id()-2,214,3, 1616578173.643487, "create");
+insert into interactwith values (last_insert_id()-3,211,1,1616578501.3076324,"create");
+insert into interactwith values (last_insert_id()-3,212,3, 1616578536.6857567, "create");
+insert into interactwith values (last_insert_id()-3,213,2, 1616578559.7238562, "create");
+insert into interactwith values (last_insert_id(),215,5,1616578872.4844575,"like");
+insert into interactwith values (last_insert_id()-3,212,1,1616579092.8645926,"like");
