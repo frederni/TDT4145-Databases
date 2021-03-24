@@ -149,6 +149,9 @@ class Session(object):
         raise NotImplementedError
 
     def reply(self, TID, postNo):
+        # First find the largest postID to our thread
+        self.c.execute("SELECT MAX(PostNo) FROM post WHERE TID=%s",(TID ,))
+        largestPostNo = self.c.fetchall()[0][0]
         print("Replying to post", postNo)
         text, isAnon = askUserInput()
         # Need to check if the post we're replying to is followup or not
@@ -162,7 +165,15 @@ class Session(object):
             PostTag,
             text)
         )
-        # Not done
+        self.c.execute("INSERT INTO interactwith VALUES (%s, %s, %s, %s, %s)", (
+            TID,
+            largestPostNo + 1,
+            self.loginUser,
+            time.time(),
+            'create')
+        )
+        self.db.connection.commit()
+        return postNo # We return the post number
     
 
 
@@ -289,20 +300,19 @@ class Session(object):
                 print(15*'-')
             action = input("enter post number followed by 'R' or 'L' to reply or like a post, e.g. '1R' or '2L'")
             if action[-1] == 'L':
-                self.like(TID=TID, postNo=int(action[:-1]))
+                excludePID = self.like(TID=TID, postNo=int(action[:-1]))
             elif action[-1] == 'R':
-                self.reply(TID=TID, postNo=int(action[:-1]))
-            else:
-                # Log that user has read all posts
-                for post in postTab:
-                    self.c.execute("INSERT INTO interactwith values (%s, %s, %s, %s, %s)",
-                    (post[0], #TID
-                    post[1], #PostNo
-                    self.loginUser,
-                    time.time(),
-                    'view')
-                    )
-                self.db.connection.commit()
+                excludePID = self.reply(TID=TID, postNo=int(action[:-1]))
+            # Log that user has read all posts
+            for post in postTab:
+                self.c.execute("INSERT INTO interactwith values (%s, %s, %s, %s, %s)",
+                (post[0], #TID
+                post[1], #PostNo
+                self.loginUser,
+                time.time(),
+                'view')
+                )
+            self.db.connection.commit()
 
 
     def viewStats(self): #A suggestion, most likely needs editing
