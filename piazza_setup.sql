@@ -81,13 +81,13 @@ create table InteractWith(
 		on update cascade
         on delete cascade
         );
-insert into Piazza_user values (1,"marit@ntnu.no","marit456","MaritJohnsen","Student");
-insert into Piazza_user values (2, "per@ntnu.no","per123","PerHansen", "Student");
-insert into Piazza_user values (3, "kari@ntnu.no", "kari123","KariNilsen", "instructor");
-insert into Piazza_user values (4, "petter@ntnu.no","petter456","PetterJakobsen","instructor");
-insert into Piazza_user values (5, "anna@ntnu.no","anna789","AnnaPedersen","student");
+insert into Piazza_user values (1,"marit@ntnu.no","marit456","Marit Johnsen","student");
+insert into Piazza_user values (2, "per@ntnu.no","per123","Per Hansen", "student");
+insert into Piazza_user values (3, "kari@ntnu.no", "kari123","Kari Nilsen", "instructor");
+insert into Piazza_user values (4, "petter@ntnu.no","petter456","Petter Jakobsen","instructor");
+insert into Piazza_user values (5, "anna@ntnu.no","anna789","Anna Pedersen","student");
 insert into Course values (4145, "Databaser","2021V",1);
-insert into Course values (4180, "Optimering", "2021V",1);
+insert into Course values (4180, "Optimering", "2021V",0);
 insert into Course values (4267, "Lineare statistiske modeller","2021V",0);
 insert into CourseMember values (4,4180);
 insert into CourseMember values (5,4180);

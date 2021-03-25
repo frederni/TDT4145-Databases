@@ -92,7 +92,10 @@ class Session(object):
     def getFolderFromID(self, FID):
         """Helper function to convert FolderID to FolderName"""
         self.c.execute("SELECT FolderName FROM folder WHERE FolderID=%s", (FID, ))
-        return self.c.fetchall()[0][0]
+        try:
+            return self.c.fetchall()[0][0]
+        except IndexError:
+            return None
 
     def askUserInput(self):
         """
@@ -105,11 +108,18 @@ class Session(object):
             print("Enter post message:", text)
             print("Anonymous? (Y/N) n")           
         else:
-            question = input("Enter post message: ")
+            text = input("Enter post message: ")
             self.c.execute("SELECT AllowsAnonPosts from Course where CourseID = %s", (self.course, ))
+            isAnon = False # By default and if global settings disallow anon posts
             if int(self.c.fetchall()[0][0]): # If global course settings allow anon posts
                 isAnon = int(input("Anonymous? (Y/N) ").lower() == "y") # Boolean casted as int to be inserted to table
         return text, isAnon
+    
+    def checkLogin(self):
+        """We often have to check if we're logged in, so it's useful to have a helper doing this"""
+        if not self.loginUser:
+            print("You need to be logged in to do this.")
+            self.login()
     # <<< Helper functions
 
     def usecaseMenu(self):
@@ -154,20 +164,22 @@ class Session(object):
                 print("Invalid username or password")
         
         # Now that a user is logged in we wish to select the course if they are registered to several courses
-        self.c.execute("SELECT CourseID from coursemember WHERE UserID=%s", (self.loginUser, ))
+        self.c.execute("SELECT CourseID, CourseName from coursemember natural join course WHERE UserID=%s", (self.loginUser, ))
         availableCourses = self.c.fetchall()
         if len(availableCourses) == 1:
             self.course = int(availableCourses[0][0]) # We automatically select for users who only have 1 course
         else:
-            for courseID in availableCourses:
-                print("Welcome! Select course:", self.getFolderFromID(courseID), end=' ')
-            if self.autofill:
-                courseName = "Databaser"
-                print("Welcome! Select course:", courseName) # TODO auto select if user only has 1 course or list legal choices
-            else:
-                courseName = input("Selection: ")
-            self.c.execute("SELECT CourseID FROM course WHERE CourseName=%s", (courseName, ))
-            self.course = int(self.c.fetchall()[0][0])
+            print("Welcome! Select course:", end=' ')
+            for course in availableCourses:
+                print(course[1], end=' ')
+            while not self.course:
+                courseName = input("\nSelection: ")
+                # Could be beneficial to use dictionary cursor here
+                for course in availableCourses:
+                    if courseName == course[1]:
+                        self.course = course[0]
+                        return
+                print("Invalid course name.", end='')
     # <<< USECASE 1 - LOGIN
 
     # >>> USECASE 2 - CREATING A THREAD
@@ -175,9 +187,7 @@ class Session(object):
         """
         Method for creating a thread. Asks for Thread title, tag, folder and content and ensures legal types.
         """
-        if not self.loginUser:
-            print("You need to be logged in to create a thread.")
-            self.login()
+        self.checkLogin()
 
 
         if self.autofill:
@@ -205,7 +215,6 @@ class Session(object):
         for f in courseFolders[:,1]: # This loop simply prints all folder names in current course
             print(f, end=', ')
         print(")")
-        text, isAnon = self.askUserInput()
         if self.autofill:
             folder = "Exercise1"
             print("Folder:", folder)
@@ -216,6 +225,8 @@ class Session(object):
                 if folder not in courseFolders[:,1]:
                     print("Invalid folder name, try again.")
         folderID = courseFolders[np.where(courseFolders==folder)[0][0], 0]
+
+        text, isAnon = self.askUserInput()
         
         # Now that we have all data we need, we need to insert new tuples
         self.c.execute("INSERT INTO thread (Title, ThreadTag, FolderID) VALUES (%s, %s, %s)",
@@ -285,12 +296,13 @@ class Session(object):
 
     # >>> USECASE 4 - SEARCH
     def search(self):
+        self.checkLogin()
         keyword = input("Search for: ")
         padded = '%' + keyword + '%'
         self.c.execute("SELECT * FROM post WHERE Textfield LIKE %s", (padded, ))
         results = self.c.fetchall()
         if len(results) !=0:
-            print("Found", len(results), "matching threads")
+            print("Found", len(results), "matching posts")
             self.displayThread(results)
         else:
             print("No results")
@@ -300,11 +312,14 @@ class Session(object):
     def viewStats(self):
         while not self.getUserInfo(self.loginUser, getInstructor=True):
             #Need to find out wether the logged in user is an instructor or not
-            print("You need to be logged in to view statistics.")
-            self.login()
-            if not self.getUserInfo(self.loginUser, getInstructor=True):
+            self.checkLogin()
+            else:
                 print("Only instructors can view statistics.")
-            else: break 
+                logout = input("Log out and relog as instructor? (Y/N) ").lower() == 'y'
+                if logout:
+                    print("Logging out...\nSelect usecase 1 to relog")
+                    self.__init__(self.db, autofill=self.autofill)
+                else: return # Bring user back to usecase meny and don't show statistics
         
         createSQL = """
         SELECT DisplayName, piazza_user.UserID, COUNT(PostNo) AS Amount
@@ -375,11 +390,15 @@ class Session(object):
                 print(timestamp)
                 print(text)
                 print(15*'-')
-            action = input("enter post number followed by 'R' or 'L' to reply or like a post, e.g. '1R' or '2L'")
-            if action[-1] == 'L':
-                excludePID = self.like(TID=TID, postNo=int(action[:-1]))
-            elif action[-1] == 'R':
-                excludePID = self.reply(TID=TID, postNo=int(action[:-1]))
+            action = input("Enter post number followed by 'R' or 'L' to reply or like a post, e.g. '1R' or '2L'\nPress space to view next thread")
+            try:
+                if action[-1] == 'L':
+                    excludePID = self.like(TID=TID, postNo=int(action[:-1]))
+                elif action[-1] == 'R':
+                    excludePID = self.reply(TID=TID, postNo=int(action[:-1]))
+            except IndexError: # IndexError when user action='' <- input[-1] out of range
+                excludePID = None # Define this so we don't get NameError
+           
             # Log that user has read all posts except those we've interacted with otherwise
             # We store the new reply postNo as excludePID since we need to skip adding this as a `view`-interaction
             # However, it's not stored in the postTab variable which is from before the reply method was called
@@ -393,14 +412,14 @@ class Session(object):
                 time.time(),
                 'view')
                 )
-            self.db.connection.commit()
+                self.db.connection.commit()
 
 
 
 def main():
     UserDB = Database(host="localhost", usr="root", pw="indmat4ever", db="piazza")
     UserSession = Session(UserDB, autofill=False)
-    #Set autofill to True to skip all input() dialogues
+    #Set autofill to True to skip all input() dialogues (except for search)
 
 
 if __name__ == '__main__':
