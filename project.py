@@ -300,7 +300,7 @@ class Session(object):
         keyword = input("Search for: ")
         padded = '%' + keyword + '%'
         searchSQL = """
-        SELECT * FROM post WHERE Textfield LIKE %s && TID IN(
+        SELECT TID FROM post WHERE Textfield LIKE %s && TID IN(
             SELECT TID from thread natural join folder WHERE folder.CourseID=%s
         )
         """
@@ -359,7 +359,7 @@ class Session(object):
         We display all posts in a thread with search match. Crucial for usecase 3 and 4
         """
         for res in results:
-            uniqueThreadIDs = list(set([results[i][1] for i in range(len(results))]))
+            uniqueThreadIDs = list(set([results[i][0] for i in range(len(results))]))
         for TID in uniqueThreadIDs:
             self.c.execute("SELECT * FROM thread NATURAL JOIN post NATURAL JOIN interactwith WHERE TID=%s", (TID, ))
             #[TID, PostNo, Title, ThreadTag, FolderID, IsAnonymous, PostTag, Textfield, UserID, Time_stamp, InteractionType]
@@ -381,7 +381,7 @@ class Session(object):
             statusStr = "Status:"
             if studentReply: statusStr += " (GREEN)"
             if instructorReply: statusStr += " (ORANGE)"
-            if not (studentReply and instructorReply): statusStr += " (RED) "
+            if not (studentReply and instructorReply): statusStr += " (RED)"
             print(statusStr)
 
             # Print all posts
