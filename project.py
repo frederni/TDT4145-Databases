@@ -299,7 +299,12 @@ class Session(object):
         self.checkLogin()
         keyword = input("Search for: ")
         padded = '%' + keyword + '%'
-        self.c.execute("SELECT * FROM post WHERE Textfield LIKE %s", (padded, ))
+        searchSQL = """
+        SELECT * FROM post WHERE Textfield LIKE %s && TID IN(
+            SELECT TID from thread natural join folder WHERE folder.CourseID=%s
+        )
+        """
+        self.c.execute(searchSQL, (padded, self.course))
         results = self.c.fetchall()
         if len(results) !=0:
             print("Found", len(results), "matching posts")
@@ -313,13 +318,12 @@ class Session(object):
         while not self.getUserInfo(self.loginUser, getInstructor=True):
             #Need to find out wether the logged in user is an instructor or not
             self.checkLogin()
-            else:
-                print("Only instructors can view statistics.")
-                logout = input("Log out and relog as instructor? (Y/N) ").lower() == 'y'
-                if logout:
-                    print("Logging out...\nSelect usecase 1 to relog")
-                    self.__init__(self.db, autofill=self.autofill)
-                else: return # Bring user back to usecase meny and don't show statistics
+            print("Only instructors can view statistics.")
+            logout = input("Log out and relog as instructor? (Y/N) ").lower() == 'y'
+            if logout:
+                print("Logging out...\nSelect usecase 1 to relog")
+                self.__init__(self.db, autofill=self.autofill)
+            else: return # Bring user back to usecase meny and don't show statistics
         
         createSQL = """
         SELECT DisplayName, piazza_user.UserID, COUNT(PostNo) AS Amount
