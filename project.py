@@ -300,7 +300,7 @@ class Session(object):
         keyword = input("Search for: ")
         padded = '%' + keyword + '%'
         searchSQL = """
-        SELECT TID FROM post WHERE Textfield LIKE %s && TID IN(
+        SELECT DISTINCT TID FROM post WHERE Textfield LIKE %s && TID IN(
             SELECT TID from thread natural join folder WHERE folder.CourseID=%s
         )
         """
@@ -358,9 +358,8 @@ class Session(object):
         """
         We display all posts in a thread with search match. Crucial for usecase 3 and 4
         """
-        for res in results:
-            uniqueThreadIDs = list(set([results[i][0] for i in range(len(results))]))
-        for TID in uniqueThreadIDs:
+        ThreadIDs = [results[i][0] for i in range(len(results))]
+        for TID in ThreadIDs:
             self.c.execute("SELECT * FROM thread NATURAL JOIN post NATURAL JOIN interactwith WHERE TID=%s", (TID, ))
             #[TID, PostNo, Title, ThreadTag, FolderID, IsAnonymous, PostTag, Textfield, UserID, Time_stamp, InteractionType]
             #[ 0 ,   1   ,   2  ,     3    ,    4    ,    5       ,    6   ,    7     ,   8   ,   9       ,       10       ]
@@ -381,7 +380,7 @@ class Session(object):
             statusStr = "Status:"
             if studentReply: statusStr += " (GREEN)"
             if instructorReply: statusStr += " (ORANGE)"
-            if not (studentReply and instructorReply): statusStr += " (RED)"
+            if not (studentReply or instructorReply): statusStr += " (RED)"
             print(statusStr)
 
             # Print all posts
@@ -389,7 +388,7 @@ class Session(object):
                 postnumber, isAnon, pTag, text, UID, timestamp, interType = post[1], post[5], post[6], post[7], post[8], post[9], post[10]
                 timestamp = time.ctime(timestamp) # Convert to easily readable time
                 postedBy = self.getUserInfo(UID, getName=True)
-                print("#" + str(postnumber) + "[" + pTag[0].upper() + pTag[1:] + "]", end=' ')
+                print("# " + str(postnumber) + " [" + pTag[0].upper() + pTag[1:] + "]", end=' ')
                 print("Posted by:", "Anonymous" if isAnon else postedBy, end=' ')
                 print(timestamp)
                 print(text)
