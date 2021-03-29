@@ -1,6 +1,7 @@
 import mysql.connector # Connector
 import numpy as np # For array management
 import time # To generate timestamp
+from getpass import getpass
 
 class Database(object):
     def __init__(self, host, usr, pw, db):
@@ -153,7 +154,7 @@ class Session(object):
                 print("E-mail:", email, "\nPassword:", password)
             else:
                 email = input("E-mail: ")
-                password = input("Password: ")
+                password = getpass("Password: ")
             self.c.execute("SELECT Email, Passkey FROM piazza_user")
             legalcombos = self.c.fetchall()
             if (email, password) in legalcombos:
@@ -420,7 +421,7 @@ class Session(object):
 
 
 def main():
-    UserDB = Database(host="localhost", usr="root", pw="indmat4ever", db="piazza")
+    UserDB = Database(host="localhost", usr="root", pw="password", db="piazza")
     UserSession = Session(UserDB, autofill=False)
     #Set autofill to True to skip all input() dialogues (except for search)
 
